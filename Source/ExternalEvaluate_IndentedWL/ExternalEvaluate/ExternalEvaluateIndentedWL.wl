@@ -1,5 +1,19 @@
 (* ::Package:: *)
 
+(* ::Title:: *)
+(*IndentedWL*)
+
+
+BeginPackage["ExternalEvaluateIndentedWL`", {"ExternalEvaluate`", "PacletManager`"}]
+
+
+(* ::Section:: *)
+(*Transformer*)
+
+
+Begin["`Transformer`Private`"]
+
+
 (*\:8fd9\:4e2a\:51fd\:6570\:63a5\:6536\:591a\:4e2a\:5757*)
 splitToSections[string_]:=
 Module[ 
@@ -60,9 +74,51 @@ ToExpression[head]@@Map[main,sections]
 ]];
 
 
-Transform[stringNotProcessed_]:=Module[
+ExternalEvaluateIndentedWL`Transformer`Transform[stringNotProcessed_]:=Module[
 {sections,string},
 string=processCommentsAndEmptyLine[stringNotProcessed];
 sections=splitToSections[string];
 If[Length[sections]==1,main[string],main/@sections]
 ]
+
+
+End[]
+
+
+(* ::Section:: *)
+(*Modify Evaluator*)
+
+
+Unprotect@ExternalEvaluate;
+DownValues@ExternalEvaluate = DeleteDuplicates@Prepend[
+	HoldPattern@ExternalEvaluate[ExternalSessionObject["IndentedWLDummy"], str_String] :> ExternalEvaluateIndentedWL`Transformer`Transform@str
+]@DownValues@ExternalEvaluate;
+Protect@ExternalEvaluate;
+
+
+Unprotect@StartExternalSession;
+DownValues@StartExternalSession = DeleteDuplicates@Prepend[
+	HoldPattern@StartExternalSession[assoc_ /; assoc@"System" === "IndentedWL"] :> ExternalSessionObject["IndentedWLDummy"]
+]@DownValues@StartExternalSession;
+Protect@StartExternalSession;
+
+
+(* ::Section:: *)
+(*Register*)
+
+
+$Icon = SetAlphaChannel[#, 1-Binarize@#]&@Import@PacletManager`PacletResource["Iconize", "defaultSpikey.png"];
+
+
+ExternalEvaluate`RegisterSystem["IndentedWL",
+    <|
+        "Icon" -> $Icon,
+        "IconCell" :> ToBoxes@$Icon,
+        "ShowInFrontendCellQ" -> True,
+        "PacletName" -> Automatic
+    |>
+  ];
+
+
+
+EndPackage[]
